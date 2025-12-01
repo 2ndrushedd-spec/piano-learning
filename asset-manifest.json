@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/piano-learning/static/css/main.f2128a3e.css",
-    "main.js": "/piano-learning/static/js/main.9280f51a.js",
+    "main.css": "/piano-learning/static/css/main.f73daac3.css",
+    "main.js": "/piano-learning/static/js/main.3d130939.js",
     "static/js/453.b681f731.chunk.js": "/piano-learning/static/js/453.b681f731.chunk.js",
     "index.html": "/piano-learning/index.html",
-    "main.f2128a3e.css.map": "/piano-learning/static/css/main.f2128a3e.css.map",
-    "main.9280f51a.js.map": "/piano-learning/static/js/main.9280f51a.js.map",
+    "main.f73daac3.css.map": "/piano-learning/static/css/main.f73daac3.css.map",
+    "main.3d130939.js.map": "/piano-learning/static/js/main.3d130939.js.map",
     "453.b681f731.chunk.js.map": "/piano-learning/static/js/453.b681f731.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.f2128a3e.css",
-    "static/js/main.9280f51a.js"
+    "static/css/main.f73daac3.css",
+    "static/js/main.3d130939.js"
   ]
 }
