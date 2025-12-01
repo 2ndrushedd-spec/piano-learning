@@ -17,6 +17,8 @@
   box-shadow: var(--panel-shadow);
   z-index: 999;
   box-sizing: border-box;
+  /* ensure children that exceed bounds are clipped (prevents keys/borders leaking) */
+  overflow: visible; /* show handles / close button (keys are contained by padding/height) */
 }
 
 /* Suggested alternative bg color: a very soft neutral (good contrast with black edges)
@@ -34,11 +36,20 @@
   padding: 0; /* ensure measurements match container width */
   margin: 0;
   overflow: hidden; /* prevent keys spilling out */
+  /* inner horizontal padding so keys don't sit under rounded corners */
+  padding-left: 10px;
+  padding-right: 10px;
+  box-sizing: border-box;
+  /* compute key area from explicit piano height minus handle + bottom pad */
+  height: calc(var(--vp-piano-height) - (var(--vp-handle-height) + var(--vp-handle-gap) + var(--vp-bottom-pad)));
+  margin-top: 0;
+  overflow: hidden;
 }
 
+/* Slightly reduce key min-width so they can't force overflow at narrow sizes */
 .key.white {
   flex: 1 1 0;
-  min-width: 40px;
+  min-width: 36px;
   height: 100%;
   /* make white key edges clearly visible with black border */
   background: #ffffff;
@@ -48,7 +59,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 6px 6px;
   user-select: none;
   position: relative;
   box-sizing: border-box;
@@ -90,6 +101,7 @@
   /* use a thin black border (won't change fill, but keeps consistent edge logic) */
   border: 1px solid #000000;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .key.black.pressed {
@@ -117,10 +129,10 @@
 /* Close X styling: red circular button that sits on top of the piano border */
 .close-x {
   position: absolute;
-  top: -16px;            /* lift up so it overlaps the panel border */
-  right: -16px;          /* push right so it overlaps the panel border */
-  width: 40px;
-  height: 40px;
+  top: 10px;                 /* placed inside panel padding */
+  right: 10px;               /* placed inside panel padding */
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: #ef4444;   /* red circle */
   color: #ffffff;        /* white X */
@@ -129,10 +141,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #fff; /* thin white border for contrast over dark border */
+  border: 2px solid rgba(255,255,255,0.95); /* keep strong contrast */
   box-shadow: 0 6px 14px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.05) inset;
   cursor: pointer;
-  z-index: 1200;         /* keep above piano and keys */
+  z-index: 1400;         /* keep above piano and keys */
   transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
 }
 
@@ -160,83 +172,88 @@
   display: none !important;
 }
 
-/* Drag handle: larger hit area on phones for easier dragging */
+/* Drag handle: make it visually obvious, centered inside the reserved gap, with strong contrast and a larger touch area */
 .drag-handle {
   position: absolute;
-  top: 6px;
-  left: 8px;
-  right: 8px;
-  height: 36px;          /* larger touch target */
+  top: calc(var(--vp-handle-gap) / 2); /* vertically centered within the gap */
+  left: 50%;
+  transform: translateX(-50%); /* center the handle horizontally */
+  width: min(360px, 68%); /* responsive width that's centered */
+  height: 12px;          /* larger touch target */
   cursor: grab;
   z-index: 130;
   border-radius: 8px;
   pointer-events: auto;
   /* visually subtle grip but larger hit area */
-  background: linear-gradient(90deg, rgba(0,0,0,0.01), rgba(0,0,0,0.01));
+  background: linear-gradient(180deg, rgba(37,99,235,0.08), rgba(37,99,235,0.03));
+  border: 1px solid rgba(37,99,235,0.18);
+  box-shadow: 0 10px 28px rgba(37,99,235,0.08);
+  transition: background 120ms ease, transform 120ms ease;
+  padding-left: 12px;
+  padding-right: 12px;
+  touch-action: none; /* ensure JS can claim gestures on touch */
 }
 
-/* stronger active state for drag on touch devices */
-.drag-handle:active { cursor: grabbing; transform: translateY(1px); }
-
-/* Ensure even the top area of the panel can be grabbed on very small screens */
-@media (max-width: 420px) {
-  .drag-handle { height: 44px; left: 6px; right: 6px; top: 4px; }
-  .virtual-piano { padding-top: 24px; } /* give extra room for handle */
-}
-
-/* Resize handle: placed on the lower-right border and visually indicates resize */
+/* Resize handle: smaller and placed at the actual bottom-right corner */
 .resize-handle {
   position: absolute;
-  /* place the handle overlapping the border so it sits on the lower-right edge */
-  right: -12px;   /* half outside so it visually sits on the border */
-  bottom: -12px;  /* half outside so it visually sits on the border */
-  width: 28px;    /* larger hit area for touch */
-  height: 28px;   /* larger hit area for touch */
+  right: 8px;    /* sit near the inner corner of the panel */
+  bottom: 8px;
+  width: 32px;    /* reduced visible handle size */
+  height: 32px;
   cursor: se-resize;
-  z-index: 130;
-  border-radius: 6px;
-  background: linear-gradient(135deg,
-    rgba(255,255,255,0.06) 0%,
-    rgba(0,0,0,0.06) 100%);
-  border: 1px solid rgba(0,0,0,0.12);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  z-index: 150;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(11,20,30,0.06), rgba(255,255,255,0.04));
+  border: 1px solid rgba(11,20,30,0.12);
+  box-shadow: 0 12px 36px rgba(11,20,30,0.10);
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: auto;
+  touch-action: none;
 }
 
-/* visual grip inside the handle: diagonal lines using pseudo-element */
+/* visible diagonal grip inside the resize handle: smaller to match new handle size */
 .resize-handle::after {
   content: "";
-  width: 60%;
-  height: 60%;
-  background-image:
-    linear-gradient(135deg, rgba(255,255,255,0.18) 25%, transparent 25%),
-    linear-gradient(135deg, rgba(255,255,255,0.18) 25%, transparent 25%);
-  background-size: 6px 6px;
-  background-position: 0 0, 3px 3px;
-  opacity: 0.95;
-  transform: rotate(45deg);
-  border-radius: 4px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 12px;
+  height: 12px;
+  border-right: 2px solid rgba(11,20,30,0.34);
+  border-bottom: 2px solid rgba(11,20,30,0.34);
+  opacity: 0.9;
   pointer-events: none;
 }
 
-/* hover/active states for affordance */
-.resize-handle:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.16);
+/* extended, invisible hit area: use smaller visible handle size (32px) */
+.resize-handle::before {
+  content: "";
+  position: absolute;
+  right: calc(-1 * (var(--vp-resize-hit) - 32px) / 2);
+  bottom: calc(-1 * (var(--vp-resize-hit) - 32px) / 2);
+  width: var(--vp-resize-hit);
+  height: var(--vp-resize-hit);
+  border-radius: 12px;
+  background: transparent;
+  pointer-events: auto;
 }
 
-/* larger active area on touch devices (no visual change) */
-@media (hover: none) and (pointer: coarse) {
-  .resize-handle { width: 36px; height: 36px; right: -16px; bottom: -16px; }
-  .resize-handle::after { background-size: 8px 8px; }
+/* small-screen overrides: keep handle small and anchored to corner */
+@media (max-width: 420px) {
+  :root { --vp-resize-hit: 72px; } /* reduced hit area for phones */
+  .resize-handle { width: 36px; height: 36px; right: 6px; bottom: 6px; }
+  .resize-handle::after { width: 14px; height: 14px; border-right-width: 2.5px; border-bottom-width: 2.5px; }
+  .drag-handle { width: min(260px, 78%); } /* narrower on small screens */
 }
 
-/* make key borders explicitly black (already set earlier) */
-.key.white { border: 1px solid #000; }
-.key.black { border: 1px solid #000; }
+/* update default hit area for desktop/tablet */
+:root {
+  --vp-resize-hit: 72px; /* smaller global default than before */
+}
 
 /* pressed animation (existing) */
 .key { transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease; }
@@ -325,3 +342,45 @@
 }
 
 /* ensure close-x sits above everything (already set) */
+
+:root {
+	/* single source of truth for piano sizing/handle vars */
+	--vp-handle-height: 36px;    /* visible drag area height; adjust to taste */
+	--vp-handle-gap: 8px;        /* spacing between handle and keys */
+	--vp-resize-hit: 96px;       /* extended resize hit area on small screens */
+	--vp-bottom-pad: 18px;       /* reserve bottom padding so keys don't overlap panel border */
+	--vp-piano-height: 260px;    /* piano content height (adjust for mobile/desktop) */
+}
+
+/* Ensure page content isn't obscured by the fixed piano on small screens.
+   Adds safe bottom padding tied to the piano height so users can scroll content
+   a bit above the piano (useful for phone view where the piano overlaps lessons).
+   Targets common app containers; adjust selectors if your app uses a different root. */
+@media (max-width: 820px) {
+  :root {
+    /* a little extra gap so content isn't flush against piano */
+    --vp-scroll-gap: 48px;
+  }
+
+  /* apply padding to common root containers so lesson pages can scroll */
+  body,
+  #root,
+  .app,
+  .page,
+  main,
+  .content {
+    padding-bottom: calc(var(--vp-piano-height) + var(--vp-scroll-gap));
+  }
+
+  /* if you want a slightly smaller padding on very small phones */
+  @media (max-width: 420px) {
+    body,
+    #root,
+    .app,
+    .page,
+    main,
+    .content {
+      padding-bottom: calc(var(--vp-piano-height) - 12px + var(--vp-scroll-gap));
+    }
+  }
+}

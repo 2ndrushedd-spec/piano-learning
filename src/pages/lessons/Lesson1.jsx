@@ -188,7 +188,7 @@ export default function Lesson1() {
               <div className="challenge-card">
                 <h2>Find the Keys (random order)</h2>
                 <p>Click the requested key (white or black). Get 12 correct in a row to finish.</p>
-                <div className="controls" style={{ display: "flex", justifyContent: "center", gap: 12 }}>
+                <div className="controls">
                   <button className="btn primary" onClick={startChallenge} disabled={completed || started}>
                     {completed ? "Completed" : started ? "In progress" : "Start Challenge"}
                   </button>

@@ -91,6 +91,12 @@
 .panel-block ul { padding-left: 18px; }
 
 /* controls */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  align-items: center;
+}
 .controls { padding-top: 8px; }
 .btn {
   padding: 8px 12px;
@@ -106,6 +112,35 @@
   border: none;
 }
 .btn:disabled { opacity: 0.6; cursor: default; }
+
+.controls .btn {
+  white-space: nowrap;
+  padding: 10px 16px;
+  min-width: 120px;
+  box-sizing: border-box;
+}
+
+/* Small screens: stack buttons into rows (Start/Completed, Reset, Clear) */
+@media (max-width: 520px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch; /* make buttons fill available width */
+    gap: 10px;
+    padding: 0 12px; /* give a little horizontal breathing room on very small screens */
+  }
+
+  .controls .btn {
+    width: 100%;
+    min-width: 0;
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+
+  /* Make primary action visually first and prominent (kept by source order) */
+  .controls .btn.primary {
+    /* optionally keep it visually emphasized */
+  }
+}
 
 .challenge-meta { margin-top: 12px; }
 .instruction { font-weight: 700; margin-bottom: 10px; color: #111827; }
