@@ -1,0 +1,159 @@
+/* Layout shell */
+.lesson3 {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 18px;
+  text-align: center;
+  font-family: Inter, Arial, sans-serif;
+  color: #0b1720;
+}
+
+/* Card + header */
+.demo-card {
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 8px 30px rgba(2,6,23,0.06);
+}
+.demo-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  text-align: left;
+}
+.demo-sub {
+  color: #475569;
+  font-size: 14px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+/* Rhythm content */
+.rhythm-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+.rhythm-head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  flex-direction: column; /* stack image and titles vertically and center them */
+  justify-content: center;
+  align-items: center;
+}
+.rhythm-img {
+	/* visible fixed size so data-URI SVG renders reliably */
+	width: 120px;
+	height: 120px;
+	max-width: 100%;
+	display: block;
+	margin: 0 auto;
+	background: #f8fafc; /* subtle card background so placeholder stands out */
+	border-radius: 8px;
+	border: 1px solid #e6eef8;
+	object-fit: contain; /* preserve SVG aspect */
+	padding: 8px;
+	box-sizing: border-box;
+}
+.rhythm-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* centered stacked title lines */
+.rhythm-text { text-align: center; margin-top: 8px; }
+.primary-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #06152a;
+  margin-top: 6px;
+}
+.secondary-title {
+  font-size: 16px;
+  color: #0b1720;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.meta {
+  color: #475569;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Beat / subdivision scale */
+.beat-scale {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.beat-box {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #f6f8fb;
+  border: 1px solid #e6eef8;
+  font-weight: 800;
+  color: #0b1720;
+  transition: transform 160ms cubic-bezier(.2,.8,.2,1), box-shadow 160ms ease, background 160ms ease;
+  position: relative;
+}
+.beat-box.small {
+  width: 48px;
+  height: 48px;
+  font-size: 14px;
+}
+
+/* Make duration highlights much more visible */
+.beat-box.active {
+  background: linear-gradient(180deg, #dbeafe 0%, #c7e3ff 100%);
+  border-color: #8fbfff;
+  box-shadow: 0 12px 30px rgba(37,99,235,0.18);
+  transform: scale(1.06);
+  color: #022c54;
+}
+
+/* Rest-specific active styling (distinct from note active) */
+.beat-box.rest-active {
+  background: linear-gradient(180deg, #fff4ec 0%, #ffe8d4 100%);
+  border-color: #ffb487;
+  box-shadow: 0 12px 30px rgba(255,130,40,0.12);
+  transform: scale(1.04);
+  color: #6b2d00;
+}
+.beat-box.rest-active.current {
+  z-index: 8;
+  transform: scale(1.12);
+  box-shadow: 0 24px 64px rgba(255,120,30,0.22);
+}
+
+/* Strong current indicator (moving pulse) */
+.beat-box.current {
+  z-index: 6;
+  transform: scale(1.08);
+  box-shadow: 0 18px 40px rgba(37,99,235,0.26);
+}
+.beat-box.current::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 6px rgba(37,99,235,0.12);
+  animation: pulse 500ms linear infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.95; transform: scale(1); }
+  50% { opacity: 0.22; transform: scale(1.02); }
+  100% { opacity: 0.05; transform: scale(1.04); }
+}

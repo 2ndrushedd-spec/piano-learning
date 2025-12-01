@@ -194,15 +194,16 @@
   touch-action: none; /* ensure JS can claim gestures on touch */
 }
 
-/* Resize handle: smaller and placed at the actual bottom-right corner */
+/* Resize handle: anchor on the panel border */
 .resize-handle {
   position: absolute;
-  right: 8px;    /* sit near the inner corner of the panel */
-  bottom: 8px;
-  width: 32px;    /* reduced visible handle size */
+  /* anchor the handle on the panel's right border (slightly outside so it sits on the edge) */
+  right: -12px;    /* moved further right to sit on the border/edge */
+  bottom: -12px;   /* keep slightly outside so it doesn't overlap keys */
+  width: 32px;
   height: 32px;
-  cursor: se-resize;
-  z-index: 150;
+  cursor: auto; /* default cursor by default; show resize only on visible hover */
+  z-index: 160;         /* keep above keys */
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(11,20,30,0.06), rgba(255,255,255,0.04));
   border: 1px solid rgba(11,20,30,0.12);
@@ -229,7 +230,7 @@
   pointer-events: none;
 }
 
-/* extended, invisible hit area: use smaller visible handle size (32px) */
+/* reduced invisible hit area so it won't reach into keys; ensure it does not affect cursor */
 .resize-handle::before {
   content: "";
   position: absolute;
@@ -239,20 +240,20 @@
   height: var(--vp-resize-hit);
   border-radius: 12px;
   background: transparent;
-  pointer-events: auto;
+  pointer-events: none; /* IMPORTANT: stop pseudo-element from changing cursor/hover state */
 }
 
-/* small-screen overrides: keep handle small and anchored to corner */
+/* small-screen overrides: keep the handle anchored on the corner and slightly reduce hit area */
 @media (max-width: 420px) {
-  :root { --vp-resize-hit: 72px; } /* reduced hit area for phones */
-  .resize-handle { width: 36px; height: 36px; right: 6px; bottom: 6px; }
+  :root { --vp-resize-hit: 56px; } /* smaller hit area for phones (still won't affect cursor) */
+  .resize-handle { width: 36px; height: 36px; right: 8px; bottom: -14px; }
   .resize-handle::after { width: 14px; height: 14px; border-right-width: 2.5px; border-bottom-width: 2.5px; }
-  .drag-handle { width: min(260px, 78%); } /* narrower on small screens */
+  .drag-handle { width: min(260px, 78%); } /* unchanged behavior for drag handle width */
 }
 
-/* update default hit area for desktop/tablet */
+/* update global default hit size (desktop/tablet) */
 :root {
-  --vp-resize-hit: 72px; /* smaller global default than before */
+  --vp-resize-hit: 72px; /* retained but adjusted by media query above */
 }
 
 /* pressed animation (existing) */

@@ -199,6 +199,7 @@ export default function VirtualPiano({
 		try { if (typeof onKeyPress === "function") onKeyPress(note.name); } catch (e) {}
 	};
 
+	// Stop by note object (existing API)
 	const stopNote = (note) => {
 		const ctx = audioCtxRef.current;
 		const active = activeNotesRef.current[note.name];
@@ -214,6 +215,64 @@ export default function VirtualPiano({
 		delete activeNotesRef.current[note.name];
 		setPressedKeys((prev) => prev.filter((n) => n !== note.name));
 	};
+
+	// Stop by name (useful for pointer handlers / global cleanup)
+	const stopNoteByName = (name) => {
+		const ctx = audioCtxRef.current;
+		const active = activeNotesRef.current[name];
+		if (!active || !ctx) {
+			setPressedKeys((prev) => prev.filter((n) => n !== name));
+			return;
+		}
+		const now = ctx.currentTime;
+		active.gain.gain.cancelScheduledValues(now);
+		active.gain.gain.setValueAtTime(active.gain.gain.value, now);
+		active.gain.gain.linearRampToValueAtTime(0.001, now + 0.25);
+		try { active.osc.stop(now + 0.25); } catch (e) {}
+		delete activeNotesRef.current[name];
+		setPressedKeys((prev) => prev.filter((n) => n !== name));
+	};
+
+	// Stop all active notes (called on cancel/visibilitychange/blur)
+	const stopAllNotes = () => {
+		const ctx = audioCtxRef.current;
+		if (!ctx) {
+			setPressedKeys([]);
+			activeNotesRef.current = {};
+			return;
+		}
+		const now = ctx.currentTime;
+		Object.keys(activeNotesRef.current).forEach((name) => {
+			const active = activeNotesRef.current[name];
+			if (!active) return;
+			try {
+				active.gain.gain.cancelScheduledValues(now);
+				active.gain.gain.setValueAtTime(active.gain.gain.value, now);
+				active.gain.gain.linearRampToValueAtTime(0.001, now + 0.12);
+				active.osc.stop(now + 0.12);
+			} catch (e) {}
+			delete activeNotesRef.current[name];
+		});
+		setPressedKeys([]);
+	};
+
+	// global listeners to ensure notes are cleaned up on cancel/blur/visibility change
+	useEffect(() => {
+		window.addEventListener("touchend", stopAllNotes, { passive: true });
+		window.addEventListener("touchcancel", stopAllNotes, { passive: true });
+		window.addEventListener("pointercancel", stopAllNotes);
+		window.addEventListener("blur", stopAllNotes);
+		const onVisibility = () => { if (document.hidden) stopAllNotes(); };
+		document.addEventListener("visibilitychange", onVisibility);
+
+		return () => {
+			window.removeEventListener("touchend", stopAllNotes);
+			window.removeEventListener("touchcancel", stopAllNotes);
+			window.removeEventListener("pointercancel", stopAllNotes);
+			window.removeEventListener("blur", stopAllNotes);
+			document.removeEventListener("visibilitychange", onVisibility);
+		};
+	}, []);
 
 	// compute container inline style; if centerBottom use centered horizontal layout
 	const containerStyle = centerBottom
@@ -273,11 +332,15 @@ export default function VirtualPiano({
 							(pressedKeys.includes(note.name) ? "pressed " : "") +
 							(Array.isArray(highlightKeys) && highlightKeys.includes(note.name) ? "highlight" : "")
 						}
+						onPointerDown={() => playNote(note)}
+						onPointerUp={() => stopNoteByName(note.name)}
+						onPointerCancel={() => stopNoteByName(note.name)}
+						onPointerLeave={() => stopNoteByName(note.name)}
+						// keep mouse handlers as fallback for older browsers (pointer events preferred)
 						onMouseDown={() => playNote(note)}
-						onMouseUp={() => stopNote(note)}
-						onMouseLeave={() => stopNote(note)}
+						onMouseUp={() => stopNoteByName(note.name)}
 						onTouchStart={() => playNote(note)}
-						onTouchEnd={() => stopNote(note)}
+						onTouchEnd={() => stopNoteByName(note.name)}
 					>
 						{/* Render label only if not hidden */}
 						{!hideLabels && <span className="label">{renderWhiteLabel(note.name)}</span>}
@@ -318,11 +381,14 @@ export default function VirtualPiano({
 									top: 0,
 									position: "absolute",
 								}}
+								onPointerDown={() => playNote(key)}
+								onPointerUp={() => stopNoteByName(key.name)}
+								onPointerCancel={() => stopNoteByName(key.name)}
+								onPointerLeave={() => stopNoteByName(key.name)}
 								onMouseDown={() => playNote(key)}
-								onMouseUp={() => stopNote(key)}
-								onMouseLeave={() => stopNote(key)}
+								onMouseUp={() => stopNoteByName(key.name)}
 								onTouchStart={() => playNote(key)}
-								onTouchEnd={() => stopNote(key)}
+								onTouchEnd={() => stopNoteByName(key.name)}
 							>
 								{/* Render split label only if not hidden */}
 								{!hideLabels && (

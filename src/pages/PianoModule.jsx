@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import "./PianoModule.css"; // for styling
 import VirtualPiano from "../components/VirtualPiano";
 import { useNavigate } from "react-router-dom";
+import Lesson3 from "./lessons/Lesson3"; // Import the new lesson component
 
 export default function PianoModule() {
   const navigate = useNavigate();
@@ -32,6 +33,10 @@ export default function PianoModule() {
     }
     if (lesson === "lesson2") {
       navigate("/lesson/2");
+      return;
+    }
+    if (lesson === "lesson3") {
+      navigate("/lesson/3"); // Navigate to Lesson 3
       return;
     }
   };
@@ -95,6 +100,29 @@ export default function PianoModule() {
                   onClick={() => startLesson("lesson2")}
                 >
                   {progress.lesson2 ? "Continue" : "Start Lesson 2"}
+                </button>
+              </div>
+            </article>
+
+            <article
+              className="card lesson-card"
+              aria-labelledby="lesson3-title"
+            >
+              <div className="card-left">
+                <h2 id="lesson3-title" className="card-title">
+                  Rhythm & Timing Basics
+                </h2>
+                <p className="card-desc">
+                  Learn to read basic rhythms, understand note values, and
+                  practice with a metronome.
+                </p>
+              </div>
+              <div className="card-actions">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => startLesson("lesson3")}
+                >
+                  {progress.lesson3 ? "Continue" : "Start Lesson 3"}
                 </button>
               </div>
             </article>
