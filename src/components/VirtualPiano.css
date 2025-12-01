@@ -1,0 +1,275 @@
+.virtual-piano {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 720px;
+  /* height: 220px;  <-- removed */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #0b0b0b; /* keep darker border */
+  position: relative; /* ensure absolute children position relative to this panel */
+  box-shadow: var(--panel-shadow);
+  z-index: 999;
+  box-sizing: border-box;
+}
+
+/* Suggested alternative bg color: a very soft neutral (good contrast with black edges)
+   e.g. --panel-bg: #f7fafc  (soft cool neutral) or keep pure white (#ffffff).
+   To change, replace .virtual-piano { background: #ffffff; } with your chosen value. */
+
+.white-keys {
+  display: flex;
+  position: relative;
+  width: 100%;
+  height: 100%; /* fill the inline height set on .virtual-piano */
+  z-index: 1;
+  gap: 0;
+  box-sizing: border-box;
+  padding: 0; /* ensure measurements match container width */
+  margin: 0;
+  overflow: hidden; /* prevent keys spilling out */
+}
+
+.key.white {
+  flex: 1 1 0;
+  min-width: 40px;
+  height: 100%;
+  /* make white key edges clearly visible with black border */
+  background: #ffffff;
+  /* was: border: 1px solid #cbd5e1; */
+  border: 1px solid #000000;
+  box-shadow: inset 0 -6px 12px rgba(11, 20, 30, 0.03);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 0 0 8px 8px;
+  user-select: none;
+  position: relative;
+  box-sizing: border-box;
+  z-index: 1;
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease,
+    background 0.08s ease;
+}
+
+.key.white.pressed {
+  transform: translateY(6px);
+  background: linear-gradient(180deg, #fbfdff 0%, #f3f6fb 100%);
+  box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+/* white key label: larger and bold for visibility */
+.key.white .label {
+  font-size: 18px;
+  font-weight: 700;
+  color: #000;
+  pointer-events: none;
+  padding-bottom: 6px;
+  line-height: 1;
+}
+
+.key.black {
+  position: absolute;
+  top: 0; /* flush with the top of the white keys container */
+  transform: translateX(0); /* positioning is computed in JS; don't shift here */
+  background: #000;
+  border-radius: 0 0 4px 4px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: auto;
+  z-index: 40; /* ensure black keys sit above white keys */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  /* use a thin black border (won't change fill, but keeps consistent edge logic) */
+  border: 1px solid #000000;
+  box-sizing: border-box;
+}
+
+.key.black.pressed {
+  transform: translateY(4px);
+  background: #050507;
+  box-shadow: inset 0 4px 10px rgba(0, 0, 0, 0.45);
+}
+
+/* black key label: slightly smaller but bold, with subtle text-shadow for contrast */
+.key.black .label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  pointer-events: none;
+  margin-top: 6px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+/* ensure label wraps nicely on narrow black keys */
+.key .label {
+  white-space: nowrap;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+}
+
+/* Close X styling: red circular button that sits on top of the piano border */
+.close-x {
+  position: absolute;
+  top: -16px;            /* lift up so it overlaps the panel border */
+  right: -16px;          /* push right so it overlaps the panel border */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #ef4444;   /* red circle */
+  color: #ffffff;        /* white X */
+  font-size: 20px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff; /* thin white border for contrast over dark border */
+  box-shadow: 0 6px 14px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.05) inset;
+  cursor: pointer;
+  z-index: 1200;         /* keep above piano and keys */
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+/* hover/focus states */
+.close-x:hover,
+.close-x:focus {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.28);
+  outline: none;
+}
+
+/* small screens: keep the circle inside viewport */
+@media (max-width: 420px) {
+  .close-x {
+    top: -12px;
+    right: -12px;
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+  }
+}
+
+/* remove old close-btn if present */
+.close-btn {
+  display: none !important;
+}
+
+/* Drag handle: thin bar at the top used to pick up and move the piano */
+.drag-handle {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  right: 12px;
+  height: 24px;
+  cursor: move;
+  z-index: 130;
+  /* subtle visible grip */
+  background: linear-gradient(90deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
+  border-radius: 6px;
+  pointer-events: auto;
+}
+
+/* Resize handle: placed on the lower-right border and visually indicates resize */
+.resize-handle {
+  position: absolute;
+  /* place the handle overlapping the border so it sits on the lower-right edge */
+  right: -12px;   /* half outside so it visually sits on the border */
+  bottom: -12px;  /* half outside so it visually sits on the border */
+  width: 28px;    /* larger hit area for touch */
+  height: 28px;   /* larger hit area for touch */
+  cursor: se-resize;
+  z-index: 130;
+  border-radius: 6px;
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.06) 0%,
+    rgba(0,0,0,0.06) 100%);
+  border: 1px solid rgba(0,0,0,0.12);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+/* visual grip inside the handle: diagonal lines using pseudo-element */
+.resize-handle::after {
+  content: "";
+  width: 60%;
+  height: 60%;
+  background-image:
+    linear-gradient(135deg, rgba(255,255,255,0.18) 25%, transparent 25%),
+    linear-gradient(135deg, rgba(255,255,255,0.18) 25%, transparent 25%);
+  background-size: 6px 6px;
+  background-position: 0 0, 3px 3px;
+  opacity: 0.95;
+  transform: rotate(45deg);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* hover/active states for affordance */
+.resize-handle:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.16);
+}
+
+/* larger active area on touch devices (no visual change) */
+@media (hover: none) and (pointer: coarse) {
+  .resize-handle { width: 36px; height: 36px; right: -16px; bottom: -16px; }
+  .resize-handle::after { background-size: 8px 8px; }
+}
+
+/* make key borders explicitly black (already set earlier) */
+.key.white { border: 1px solid #000; }
+.key.black { border: 1px solid #000; }
+
+/* pressed animation (existing) */
+.key { transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.08s ease; }
+
+/* Visual highlight for lesson focus (expand / glow) */
+.key.white.highlight,
+.key.black.highlight {
+  /* use a gentle scale animation instead of translateY */
+  animation: vp-expand 900ms ease-in-out infinite;
+  box-shadow: 0 18px 40px rgba(37,99,235,0.20), 0 0 0 8px rgba(37,99,235,0.12);
+  border-color: #2563eb !important;
+  transform-origin: center bottom;
+  z-index: 101 !important; /* ensure highlight is above other keys */
+}
+
+/* ensure black keys sit above white keys and highlighted keys are top-most */
+.key.black { z-index: 100; }
+.key.black.highlight { z-index: 101 !important; }
+
+/* new expand keyframes: scale up slightly and increase glow at mid-phase */
+@keyframes vp-expand {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 6px 18px rgba(37,99,235,0.06), 0 0 0 4px rgba(37,99,235,0.06);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 22px 48px rgba(37,99,235,0.30), 0 0 0 12px rgba(37,99,235,0.18);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 6px 18px rgba(37,99,235,0.06), 0 0 0 4px rgba(37,99,235,0.06);
+  }
+}
+
+/* small label reveal (used by Lesson animation if needed) */
+.key.white .label.reveal {
+  animation: reveal-label 0.6s ease forwards;
+  opacity: 0;
+}
+@keyframes reveal-label {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ensure close-x sits above everything (already set) */

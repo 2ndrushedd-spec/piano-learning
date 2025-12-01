@@ -1,0 +1,111 @@
+:root{
+  --cream: #fffaf0;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --text: #0b1220;
+  --shadow: 0 10px 30px rgba(11,20,30,0.06);
+  --radius: 12px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+/* Page background */
+.instrument-select-page {
+  background: linear-gradient(180deg, var(--cream), #fff);
+  min-height: 100vh;
+  padding: 48px 20px;
+  box-sizing: border-box;
+  color: var(--text);
+}
+
+/* Centered container */
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* Header */
+.select-header { text-align: center; margin-bottom: 4px; }
+.select-title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: #071130;
+}
+.select-sub {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* Grid */
+.instrument-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+/* Card */
+.instrument-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease;
+  border: 1px solid rgba(11,20,30,0.04);
+  min-height: 92px;
+}
+.instrument-card:focus,
+.instrument-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px rgba(11,20,30,0.10);
+  outline: none;
+}
+
+.instrument-disabled {
+  opacity: 0.7;
+  cursor: default;
+  transform: none;
+  box-shadow: 0 4px 14px rgba(11,20,30,0.04);
+}
+
+/* Icon */
+.instrument-icon {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  flex: 0 0 56px;
+}
+
+/* Info */
+.instrument-info { display:flex; flex-direction:column; gap:4px; }
+.instrument-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #071130;
+}
+.instrument-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Footer */
+.select-footer { text-align: center; color: var(--muted); margin-top: 6px; }
+
+/* Responsive tweaks */
+@media (max-width: 520px) {
+  .select-title { font-size: 22px; }
+  .instrument-icon { width: 48px; height: 48px; }
+  .instrument-card { padding: 14px; gap: 10px; }
+  .instrument-desc { font-size: 12px; }
+}
