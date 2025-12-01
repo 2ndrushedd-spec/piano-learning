@@ -242,9 +242,14 @@ export default function VirtualPiano({
 		"A#": "Bb",
 	};
 
-	const renderLabel = (name) => {
-		if (!name) return "";
-		return enharmonic[name] ? `${name} / ${enharmonic[name]}` : name;
+	// Render label for white keys (string) or black keys (two-line object)
+	const renderWhiteLabel = (name) => {
+	  return name || "";
+	};
+	
+	const renderBlackLabelParts = (name) => {
+	  const flat = enharmonic[name] || "";
+	  return { sharp: name, flat };
 	};
 
 	// Compute white cell width from current size and render keys
@@ -275,7 +280,7 @@ export default function VirtualPiano({
 						onTouchEnd={() => stopNote(note)}
 					>
 						{/* Render label only if not hidden */}
-						{!hideLabels && <span className="label">{renderLabel(note.name)}</span>}
+						{!hideLabels && <span className="label">{renderWhiteLabel(note.name)}</span>}
 					</div>
 				))}
 
@@ -297,6 +302,7 @@ export default function VirtualPiano({
 						// subtract half of black width (in percent) to center
 						const leftCalc = `calc(${seamPercent}% - ${blackWidthPercent / 2}%)`;
 
+						const parts = renderBlackLabelParts(key.name);
 						return (
 							<div
 								key={key.name}
@@ -318,8 +324,13 @@ export default function VirtualPiano({
 								onTouchStart={() => playNote(key)}
 								onTouchEnd={() => stopNote(key)}
 							>
-								{/* Render label only if not hidden */}
-								{!hideLabels && <span className="label">{renderLabel(key.name)}</span>}
+								{/* Render split label only if not hidden */}
+								{!hideLabels && (
+									<span className="label">
+										<span className="label-sharp">{parts.sharp}</span>
+										<span className="label-flat">{parts.flat}</span>
+									</span>
+								)}
 							</div>
 						);
 					})}

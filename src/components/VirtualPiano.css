@@ -160,19 +160,28 @@
   display: none !important;
 }
 
-/* Drag handle: thin bar at the top used to pick up and move the piano */
+/* Drag handle: larger hit area on phones for easier dragging */
 .drag-handle {
   position: absolute;
-  top: 8px;
-  left: 12px;
-  right: 12px;
-  height: 24px;
-  cursor: move;
+  top: 6px;
+  left: 8px;
+  right: 8px;
+  height: 36px;          /* larger touch target */
+  cursor: grab;
   z-index: 130;
-  /* subtle visible grip */
-  background: linear-gradient(90deg, rgba(0,0,0,0.02), rgba(0,0,0,0.02));
-  border-radius: 6px;
+  border-radius: 8px;
   pointer-events: auto;
+  /* visually subtle grip but larger hit area */
+  background: linear-gradient(90deg, rgba(0,0,0,0.01), rgba(0,0,0,0.01));
+}
+
+/* stronger active state for drag on touch devices */
+.drag-handle:active { cursor: grabbing; transform: translateY(1px); }
+
+/* Ensure even the top area of the panel can be grabbed on very small screens */
+@media (max-width: 420px) {
+  .drag-handle { height: 44px; left: 6px; right: 6px; top: 4px; }
+  .virtual-piano { padding-top: 24px; } /* give extra room for handle */
 }
 
 /* Resize handle: placed on the lower-right border and visually indicates resize */
@@ -270,6 +279,49 @@
 }
 @keyframes reveal-label {
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Black-key label: stacked, sharp on top, flat at bottom */
+.key.black .label {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+/* sharp = top text; slightly smaller and bold */
+.key.black .label-sharp {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 2px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  align-self: center;
+}
+
+/* flat = bottom text; slightly lighter weight */
+.key.black .label-flat {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+  opacity: 0.92;
+  margin-top: 2px;
+  align-self: center;
+}
+
+/* make sure black key label text stays within key bounds */
+.key.black .label-sharp,
+.key.black .label-flat {
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 90%;
 }
 
 /* ensure close-x sits above everything (already set) */
