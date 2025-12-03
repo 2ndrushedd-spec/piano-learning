@@ -3,7 +3,7 @@ import InstrumentSelect from "./pages/InstrumentSelect";
 import PianoModule from "./pages/PianoModule";
 import Lesson1 from "./pages/lessons/Lesson1";
 import Lesson2 from "./pages/lessons/Lesson2";
-import Lesson3 from "./pages/lessons/Lesson3"; // <-- added import
+import Lesson3 from "./pages/lessons/Lesson3";
 
 export default function App() {
 	return (

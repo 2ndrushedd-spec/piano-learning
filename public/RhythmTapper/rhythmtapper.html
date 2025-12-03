@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rhythm Tapper</title>
+<style>
+body { margin:0; background:#111; color:white; font-family:Arial; overflow:hidden; user-select:none; }
+#startScreen { position:absolute; width:100%; height:100%; background:#111; display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:9999; }
+#startBtn { padding:15px 30px; font-size:20px; cursor:pointer; }
+#gameUI { position:absolute; top:10px; width:100%; text-align:center; z-index:5000; }
+.top-bar { display:flex; justify-content:space-around; font-size:22px; }
+#gameArea { position:absolute; top:60px; bottom:0; width:100%; display:flex; justify-content:space-around; z-index:1; }
+.lane { width:20%; height:100%; border-left:2px solid #444; border-right:2px solid #444; position:relative; background: rgba(255,255,255,0.04); overflow:hidden; -webkit-user-select:none; -webkit-touch-callout:none; user-select:none; }
+.lane.active { background: rgba(255,255,255,0.15); }
+.laneLabel { position:absolute; bottom:20px; width:100%; text-align:center; font-size:26px; opacity:0.5; pointer-events:none; color:#fff; }
+#hitBar { position:absolute; bottom:150px; left:0; width:100%; height:6px; background:#00ffcc; opacity:0.4; z-index:3;}
+.note { position:absolute; width:35px; height:35px; border-radius:50%; z-index:3; }
+.hitEffect { position:absolute; width:40px; height:40px; border-radius:50%; opacity:1; z-index:4; animation:hitFade 0.4s ease-out forwards; }
+@keyframes hitFade { 0%{transform:scale(1); opacity:1;} 100%{transform:scale(2); opacity:0;} }
+#hitText { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:48px; color:#fff; opacity:0; pointer-events:none; z-index:10; text-shadow:0 0 10px #0ff; transition:opacity 0.2s ease, transform 0.2s ease; }
+
+@media (max-width: 600px) {
+    .laneLabel { display: none; }
+    .top-bar { font-size: 16px; justify-content: space-evenly; padding: 5px 0; }
+    #gameUI { top: 0; }
+    #gameArea { top: 40px; }
+}
+</style>
+</head>
+<body>
+
+<div id="startScreen">
+    <h1>Rhythm Tapper</h1>
+    <p>Press A, S, D, F or Tap the Lanes</p>
+    <button id="startBtn">Start Game</button>
+</div>
+
+<div id="gameUI">
+    <div class="top-bar">
+        <div id="scoreDisplay">Score: 0</div>
+        <div id="comboDisplay">Combo: x1</div>
+        <div id="livesDisplay">Lives: ❤️❤️❤️</div>
+    </div>
+</div>
+
+<div id="gameArea">
+    <div id="hitBar"></div>
+    <div class="lane" data-key="a"><div class="laneLabel">A</div></div>
+    <div class="lane" data-key="s"><div class="laneLabel">S</div></div>
+    <div class="lane" data-key="d"><div class="laneLabel">D</div></div>
+    <div class="lane" data-key="f"><div class="laneLabel">F</div></div>
+</div>
+
+<div id="hitText"></div>
+
+<!-- audio elements (place bgm1.mp3, Good.wav, Miss.wav, GameOver.mp3 in this same folder) -->
+<audio id="bgm" loop src="./bgm1.mp3" preload="auto"></audio>
+<audio id="perfectSound" src="./Good.wav" preload="auto"></audio>
+<audio id="goodSound" src="./Good.wav" preload="auto"></audio>
+<audio id="missSound" src="./Miss.wav" preload="auto"></audio>
+<audio id="gameOverSound" src="./GameOver.mp3" preload="auto"></audio>
+
+<script>
+// minimal adapter: use clone-play helper and preserve original logic
+
+const lanes = Array.from(document.querySelectorAll('.lane'));
+const hitBar = document.getElementById("hitBar");
+const hitText = document.getElementById("hitText");
+
+let score = 0, combo = 1, lives = 3;
+let noteSpeed = 3, spawnInterval = 900;
+let running = false, lastSpawn = 0;
+let gameOver = false;
+
+const colors = ["#ff4d4d","#4d8aff","#4dff4d","#ffdb4d"];
+const keys = ["a","s","d","f"];
+
+const PERFECT_RANGE = 20;
+const GOOD_RANGE = 60;
+const MISS_THRESHOLD = GOOD_RANGE + 10;
+
+const scoreDisplay = document.getElementById("scoreDisplay");
+const comboDisplay = document.getElementById("comboDisplay");
+const livesDisplay = document.getElementById("livesDisplay");
+const startScreen = document.getElementById("startScreen");
+const bgm = document.getElementById("bgm");
+
+// helper: clone and play audio element by id (allows overlapping)
+function playSoundById(id, vol=0.8){
+    const el = document.getElementById(id);
+    if(!el) return;
+    const node = el.cloneNode(true);
+    node.volume = vol;
+    node.currentTime = 0;
+    node.play().catch(e => { /* ignore autoplay blocks */ });
+}
+
+// start
+document.getElementById("startBtn").onclick = startGame;
+
+function startGame() {
+    running = true;
+    startScreen.style.display = "none";
+    bgm.volume = 0.4;
+    bgm.play().catch(e => console.log('BGM playback failed:', e));
+    // unlock small sound
+    playSoundById('perfectSound', 0.01);
+    requestAnimationFrame(gameLoop);
+}
+
+function spawnNote() {
+    const laneIndex = Math.floor(Math.random() * 4);
+    const lane = lanes[laneIndex];
+    const note = document.createElement("div");
+    note.classList.add("note");
+    note.style.background = colors[laneIndex];
+    note.style.left = (lane.offsetWidth/2 - 17) + "px";
+    note.style.top = "0px";
+    note.dataset.lane = laneIndex;
+    lane.appendChild(note);
+}
+
+function updateNotes() {
+    lanes.forEach((lane, laneIndex) => {
+        const notes = Array.from(lane.querySelectorAll('.note'));
+        notes.forEach(note => {
+            let y = parseFloat(note.style.top);
+            y += noteSpeed;
+            note.style.top = y + "px";
+
+            const hitY = hitBar.offsetTop + hitBar.offsetHeight/2;
+            const noteCenter = y + (note.offsetHeight/2);
+
+            if(noteCenter > hitY + MISS_THRESHOLD){
+                registerMiss();
+                note.remove();
+            }
+        });
+    });
+}
+
+function registerHit(type, laneIndex){
+    const lane = lanes[laneIndex];
+    const effect = document.createElement("div");
+    effect.classList.add("hitEffect");
+    effect.style.background = colors[laneIndex];
+    effect.style.left = (lane.offsetWidth/2 - 20) + "px";
+    effect.style.top = hitBar.offsetTop + "px";
+    lane.appendChild(effect);
+    setTimeout(() => effect.remove(), 400);
+
+    hitText.textContent = type.toUpperCase() + "!";
+    hitText.style.opacity = 1;
+    hitText.style.color = "#fff";
+    hitText.style.transform = "translate(-50%, -100%) scale(1.2)";
+    setTimeout(() => {
+        hitText.style.opacity = 0;
+        hitText.style.transform = "translate(-50%, -50%) scale(1)";
+    }, 300);
+
+    if(type==="perfect"){ score += 2*combo; combo++; playSoundById('perfectSound', 0.4); }
+    else if(type==="good"){ score += 1*combo; combo++; playSoundById('goodSound', 0.4); }
+
+    scoreDisplay.textContent = "Score: "+score;
+    comboDisplay.textContent = "Combo: x"+combo;
+}
+
+function registerMiss(){
+    if(gameOver) return;
+
+    hitText.textContent = "MISS";
+    hitText.style.color = "#ff4d4d";
+    hitText.style.opacity = 1;
+    hitText.style.transform = "translate(-50%, -100%) scale(1.2)";
+    setTimeout(() => {
+        hitText.style.opacity = 0;
+        hitText.style.transform = "translate(-50%, -50%) scale(1)";
+        hitText.style.color = "#fff";
+    }, 300);
+
+    playSoundById('missSound', 0.6);
+
+    lives--;
+    combo = 1;
+    livesDisplay.textContent = "Lives: " + "❤️".repeat(lives) + "🖤".repeat(3-lives);
+    comboDisplay.textContent = "Combo: x1";
+
+    if(lives <= 0){
+        gameOver = true;
+        bgm.pause();
+        bgm.currentTime = 0;
+        playSoundById('gameOverSound', 1.0);
+        setTimeout(() => {
+             alert("Game Over! Score: "+score);
+             location.reload();
+        }, 500);
+    }
+}
+
+function attemptHit(laneIndex){
+    const lane = lanes[laneIndex];
+    const notes = Array.from(lane.querySelectorAll('.note'));
+    const relevantNotes = notes.filter(n => {
+        const y = parseFloat(n.style.top);
+        const noteCenter = y + n.offsetHeight/2;
+        const hitY = hitBar.offsetTop + hitBar.offsetHeight/2;
+        return noteCenter < hitY + MISS_THRESHOLD;
+    });
+
+    if(relevantNotes.length === 0) return registerMiss();
+
+    const nearest = relevantNotes.sort((a,b)=>parseFloat(b.style.top) - parseFloat(a.style.top))[0];
+    const y = parseFloat(nearest.style.top);
+    const noteCenter = y + nearest.offsetHeight/2;
+    const hitY = hitBar.offsetTop + hitBar.offsetHeight/2;
+
+    let type = "none";
+    const distanceToHitBar = Math.abs(noteCenter - hitY);
+    if(distanceToHitBar <= PERFECT_RANGE) type = "perfect";
+    else if (distanceToHitBar <= GOOD_RANGE) type = "good";
+
+    if(type !== "none") {
+        registerHit(type, laneIndex);
+        nearest.remove();
+    } else if (distanceToHitBar < MISS_THRESHOLD) {
+        registerMiss();
+        nearest.remove();
+    }
+}
+
+document.addEventListener("keydown", e => {
+    if(running){
+        const index = keys.indexOf(e.key.toLowerCase());
+        if(index !== -1) attemptHit(index);
+    }
+});
+
+lanes.forEach((lane,index) => {
+    lane.addEventListener("mousedown", () => {
+        if(!running) return;
+        lane.classList.add("active");
+        setTimeout(()=>lane.classList.remove("active"),120);
+        attemptHit(index);
+    });
+    lane.addEventListener("touchstart", (e) => {
+        if(!running) return;
+        e.preventDefault();
+        lane.classList.add("active");
+        setTimeout(()=>lane.classList.remove("active"),120);
+        attemptHit(index);
+    });
+});
+
+let lastTime=0;
+function gameLoop(timestamp){
+    if(!running) return;
+    if(!lastTime) lastTime = timestamp;
+    if(timestamp - lastSpawn > spawnInterval){
+        spawnNote();
+        lastSpawn = timestamp;
+        noteSpeed += 0.05;
+        spawnInterval = Math.max(300, spawnInterval - 10);
+    }
+    updateNotes();
+    requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>

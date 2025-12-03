@@ -42,6 +42,7 @@ export default function PianoModule() {
   };
 
   const startGame = (game) => {
+    // simple start behavior (was original): show a quick alert and mark progress
     alert(`Starting ${game}...`);
     setProgress((prev) => ({ ...prev, [game]: true }));
   };
@@ -52,7 +53,7 @@ export default function PianoModule() {
         <header className="module-header">
           <h1 className="module-title">Piano Learning Module</h1>
           <p className="module-sub">
-            Interactive lessons and timed practice — pick a lesson to begin.
+            Interactive lessons and timed practice, pick a lesson to begin.
           </p>
         </header>
 
@@ -127,21 +128,7 @@ export default function PianoModule() {
               </div>
             </article>
 
-            <article className="card game-card" aria-labelledby="game1-title">
-              <div className="card-left">
-                <h2 id="game1-title" className="card-title">
-                  Twinkle Tutorial
-                </h2>
-                <p className="card-desc">
-                  Practice a simple melody and improve timing.
-                </p>
-              </div>
-              <div className="card-actions">
-                <button className="btn" onClick={() => startGame("game1")}>
-                  {progress.game1 ? "Play Again" : "Start Game"}
-                </button>
-              </div>
-            </article>
+            {/* Twinkle Tutorial game removed */}
           </section>
 
           <section className="module-info">

@@ -1,111 +1,85 @@
+/* Cream-style layout: two-column with large instrument cards and right-side mini-games */
+
+/* Color system */
 :root{
-  --cream: #fffaf0;
-  --card: #ffffff;
-  --muted: #6b7280;
+  --bg: #fbf6ee;
+  --panel: #fff;
+  --muted: #7b7f86;
+  --text: #0f1720;
+  --card-radius: 12px;
+  --shadow: 0 10px 30px rgba(15,20,25,0.06);
   --accent: #2563eb;
-  --text: #0b1220;
-  --shadow: 0 10px 30px rgba(11,20,30,0.06);
-  --radius: 12px;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-/* Page background */
-.instrument-select-page {
-  background: linear-gradient(180deg, var(--cream), #fff);
-  min-height: 100vh;
-  padding: 48px 20px;
-  box-sizing: border-box;
-  color: var(--text);
+/* page container (keeps existing module styles consistent) */
+.module-page{ background:var(--bg); padding:36px 20px; min-height:100vh; box-sizing:border-box; display:flex; justify-content:center; align-items:flex-start; }
+.module-wrap{ width:100%; max-width:1100px; margin:0 auto; background:transparent; padding:12px; display:flex; flex-direction:column; align-items:center; }
+
+/* Remove previous heavy header styles and use centered small header above left column */
+.instrument-select-main {
+  width:100%;
+  max-width:980px;            /* keep content narrow and centered */
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 28px;
+  align-items: start;
+  margin: 0 auto;             /* center grid inside module-wrap */
 }
 
-/* Centered container */
-.container {
-  max-width: 1100px;
-  margin: 0 auto;
+
+/* left area: center header and instruments */
+.is-left { display:flex; flex-direction:column; gap:18px; align-items:center; text-align:center; }
+.is-header { padding: 6px 12px; }
+
+/* instruments row: center the two large cards and constrain their width */
+.instruments-row {
+  display: flex;
+  gap: 18px;
+  justify-content: center; /* CENTER the piano & guitar cards */
+  align-items: center;
+  width: 100%;
+  max-width: 920px;
+}
+
+/* ensure large instrument cards don't stretch too wide and stay centered */
+.card.instrument-card.large {
+  min-height: 88px;
+  flex: 0 1 420px; /* prefer a slightly narrower card for centered layout */
+  max-width: 420px;
+  margin: 0 auto;  /* center each card block */
+  cursor: pointer;
+}
+
+/* mini-games column: center stacked mini cards */
+.is-right {
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  align-items: center; /* CENTER mini-game cards horizontally */
 }
+.mini-title { margin:0 0 12px 0; font-size:20px; color:var(--text); font-weight:700; }
 
-/* Header */
-.select-header { text-align: center; margin-bottom: 4px; }
-.select-title {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 800;
-  color: #071130;
-}
-.select-sub {
-  margin: 6px 0 0;
-  color: var(--muted);
-  font-size: 15px;
-}
-
-/* Grid */
-.instrument-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
-  align-items: start;
-}
-
-/* Card */
-.instrument-card {
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 18px;
+/* smaller mini-game cards: fixed width and centered */
+.card.mini-card {
+  width: 260px;
+  margin: 0 0 12px 0;
   box-shadow: var(--shadow);
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  cursor: pointer;
-  transition: transform 180ms ease, box-shadow 180ms ease;
-  border: 1px solid rgba(11,20,30,0.04);
-  min-height: 92px;
+  border:1px solid rgba(15,20,25,0.03);
 }
-.instrument-card:focus,
-.instrument-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 18px 40px rgba(11,20,30,0.10);
-  outline: none;
-}
+.card.mini-card .card-title{ margin:0; font-size:16px; color:var(--text); font-weight:700; }
+.card-desc{ margin:6px 0 0 0; color:var(--muted); font-size:13px; }
 
-.instrument-disabled {
-  opacity: 0.7;
-  cursor: default;
-  transform: none;
-  box-shadow: 0 4px 14px rgba(11,20,30,0.04);
-}
+/* clickable pointer and focus */
+.card[role="button"]{ transition:transform .14s ease, box-shadow .14s ease; }
+.card[role="button"]:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(15,20,25,0.08); }
+.card[role="button"]:focus { outline: 3px solid rgba(37,99,235,0.12); outline-offset:4px; }
 
-/* Icon */
-.instrument-icon {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-  flex: 0 0 56px;
-}
-
-/* Info */
-.instrument-info { display:flex; flex-direction:column; gap:4px; }
-.instrument-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  color: #071130;
-}
-.instrument-desc {
-  margin: 0;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-/* Footer */
-.select-footer { text-align: center; color: var(--muted); margin-top: 6px; }
-
-/* Responsive tweaks */
-@media (max-width: 520px) {
-  .select-title { font-size: 22px; }
-  .instrument-icon { width: 48px; height: 48px; }
-  .instrument-card { padding: 14px; gap: 10px; }
-  .instrument-desc { font-size: 12px; }
+/* responsive */
+@media (max-width: 980px){
+  .instrument-select-main{ grid-template-columns: 1fr; }
+  .is-right { order: 2; width:100%; align-items:center; }
+  .is-left { order: 1; }
+  .instruments-row{ flex-direction:column; align-items: center; gap:12px; }
+  .card.instrument-card.large { flex: 0 1 100%; max-width: 720px; }
+  .card.mini-card { width: 100%; max-width: 420px; }
 }

@@ -31,6 +31,10 @@ export default function Lesson2() {
   const [hitsArr, setHitsArr] = useState([]); // booleans per beat
   const TICK_MS = 600; // beat duration (actual tempo ≈ 100 BPM)
 
+  // new: countdown state and ref
+  const [countdown, setCountdown] = useState(0);
+  const countdownRef = useRef(null);
+
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LESSON_KEY);
@@ -130,6 +134,35 @@ export default function Lesson2() {
       awaitingInputRef.current = true;
     }, TICK_MS);
     setTab("challenge");
+  };
+
+  // new: start handler that shows a 3-second countdown, then calls original start logic
+  const startWithCountdown = () => {
+    // if already counting or already started, ignore
+    if (countdown > 0) return;
+    setCountdown(3);
+    // decrement every second
+    countdownRef.current = window.setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          // stop the interval
+          if (countdownRef.current) {
+            clearInterval(countdownRef.current);
+            countdownRef.current = null;
+          }
+          // small delay to allow "1" to be visible -> then start
+          setTimeout(() => {
+            setCountdown(0);
+            // CALL THE ORIGINAL START FUNCTION HERE
+            // If your original starter is named `startChallenge`, call it:
+            if (typeof startChallenge === "function") startChallenge();
+            // Otherwise replace the above with your existing start logic.
+          }, 220);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
   };
 
   const resetChallenge = () => {
@@ -276,7 +309,7 @@ export default function Lesson2() {
                 </div>
 
                 <div className="controls" style={{ marginTop: 12 }}>
-                  <button className="btn primary" onClick={startChallenge} disabled={started || completed}>
+                  <button className="btn primary" onClick={startWithCountdown} disabled={started || completed}>
                     {completed ? "Completed" : started ? "In progress" : "Start Challenge"}
                   </button>
                   <button className="btn" onClick={resetChallenge}>Reset Challenge</button>
@@ -305,6 +338,29 @@ export default function Lesson2() {
           </section>
         )}
       </main>
+
+      {/* Countdown overlay / indicator */}
+      {countdown > 0 && (
+        <div className="countdown-overlay" aria-live="polite" style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          pointerEvents: "none"
+        }}>
+          <div style={{
+            background: "rgba(15,20,25,0.85)",
+            color: "#fff",
+            fontSize: 56,
+            padding: "18px 28px",
+            borderRadius: 12,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.4)"
+          }}>
+            {countdown}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
