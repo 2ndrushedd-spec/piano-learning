@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Note Identifier</title>
+<style>
+  :root { --bg:#0b1220; --card:#0f1724; --accent:#10b981; --muted:#94a3b8; --key:#fff; }
+  body { margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,#071427,#081828);color:#e6eef8;display:flex;min-height:100vh;align-items:flex-start;justify-content:center;padding:28px;box-sizing:border-box;}
+  .app { width:100%;max-width:980px; }
+  .panel { background: rgba(255,255,255,0.03); padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.04); box-shadow:0 10px 30px rgba(2,6,23,0.6); }
+  h1{margin:0 0 8px;font-size:20px}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:12px 0;}
+  select,input[type=range]{padding:6px;border-radius:8px;border:none;background:rgba(255,255,255,0.03);color:#e6eef8}
+  button{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:#05201e;font-weight:700;cursor:pointer}
+  button.secondary{background:rgba(255,255,255,0.06);color:#e6eef8}
+  .status{display:flex;gap:12px;align-items:center;margin-top:8px}
+  .status div{background:rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px}
+  .keyboard {margin-top:16px;display:flex;position:relative;height:160px}
+  .white {flex:1;margin:0 6px;border-radius:8px;background:var(--key);display:flex;align-items:flex-end;justify-content:center;padding-bottom:12px;color:#000;font-weight:700;cursor:pointer;box-shadow:inset 0 -8px 14px rgba(0,0,0,0.08);user-select:none}
+  .white.active {background:#2563eb;color:#fff;transform:translateY(-6px);box-shadow:0 12px 30px rgba(37,99,235,0.18)}
+  .black {position:absolute;width:48px;height:96px;background:#111;top:0;border-radius:6px;color:#fff;display:flex;align-items:flex-end;justify-content:center;padding-bottom:10px;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,0.6);user-select:none}
+  .black.active{background:#111;outline:3px solid #2563eb}
+  /* position blacks relative to white keys */
+  .b-Csharp{left:60px}
+  .b-Dsharp{left:140px}
+  .b-Fsharp{left:300px}
+  .b-Gsharp{left:380px}
+  .b-Asharp{left:460px}
+  .row {display:flex;gap:10px}
+  .sequence {display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .seq-item {padding:8px 10px;border-radius:8px;background:rgba(255,255,255,0.03)}
+  .feedback {margin-left:12px;font-weight:800}
+  .modes {display:flex;gap:8px;flex-wrap:wrap}
+  .small{font-size:13px;color:var(--muted)}
+  @media(max-width:720px){.black{display:none}.keyboard{height:120px}.white{margin:0 4px}}
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="panel">
+      <h1>Note Identifier</h1>
+      <p class="small">Listen to a note (or melody) and identify which piano key produced it. Use on-screen keys or keyboard (A S D F G H).</p>
+
+      <div class="controls">
+        <label>
+          Mode
+          <select id="mode">
+            <option value="timed">Timed Challenge (60s)</option>
+            <option value="speed">Speed Mode</option>
+            <option value="melody">Melody Mode</option>
+            <option value="visual">Visual Aid Mode</option>
+          </select>
+        </label>
+
+        <label class="small">Difficulty
+          <input id="difficulty" type="range" min="1" max="3" value="2" />
+        </label>
+
+        <button id="startBtn">Start</button>
+        <button id="playBtn" class="secondary">Play Note</button>
+
+        <div style="margin-left:auto" class="small">
+          <span>Score: <span id="score">0</span></span>
+        </div>
+      </div>
+
+      <div class="status">
+        <div>Timer: <span id="timer">--</span></div>
+        <div>Round: <span id="round">0</span></div>
+        <div>Speed: <span id="speedVal">normal</span></div>
+        <div class="feedback" id="feedback">&nbsp;</div>
+      </div>
+
+      <div class="sequence" id="sequenceRow" aria-live="polite"></div>
+
+      <div class="keyboard" id="keyboard">
+        <!-- white keys (C D E F G A B) -->
+        <div class="white" data-note="C4">C</div>
+        <div class="white" data-note="D4">D</div>
+        <div class="white" data-note="E4">E</div>
+        <div class="white" data-note="F4">F</div>
+        <div class="white" data-note="G4">G</div>
+        <div class="white" data-note="A4">A</div>
+        <div class="white" data-note="B4">B</div>
+
+        <!-- black keys positioned absolutely -->
+        <div class="black b-Csharp" data-note="C#4">C#</div>
+        <div class="black b-Dsharp" data-note="D#4">D#</div>
+        <div class="black b-Fsharp" data-note="F#4">F#</div>
+        <div class="black b-Gsharp" data-note="G#4">G#</div>
+        <div class="black b-Asharp" data-note="A#4">A#</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* filepath: c:\Users\User\piano-learning\public\NoteIdentifier\noteidentifier.html */
+/* Note Identifier — static page using WebAudio. */
+
+(function(){
+  // Frequency map for octave 4 (C4-B4 incl sharps)
+  const FREQ = {
+    "C4":261.63, "C#4":277.18, "D4":293.66, "D#4":311.13, "E4":329.63,
+    "F4":349.23, "F#4":369.99, "G4":392.00, "G#4":415.30, "A4":440.00, "A#4":466.16, "B4":493.88
+  };
+
+  const modeEl = document.getElementById('mode');
+  const startBtn = document.getElementById('startBtn');
+  const playBtn = document.getElementById('playBtn');
+  const scoreEl = document.getElementById('score');
+  const timerEl = document.getElementById('timer');
+  const roundEl = document.getElementById('round');
+  const seqRow = document.getElementById('sequenceRow');
+  const keyboard = document.getElementById('keyboard');
+  const feedback = document.getElementById('feedback');
+  const speedVal = document.getElementById('speedVal');
+  const difficulty = document.getElementById('difficulty');
+
+  // audio
+  let audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+  function playFreq(freq,dur=0.45, type='sine'){
+    const ctx = ensureAudio();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.linearRampToValueAtTime(0.25, ctx.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + dur + 0.02);
+  }
+
+  // game state
+  let running=false, score=0, round=0, timerId=null, timeLeft=0, currentNote=null;
+  let intervalMs=1500, speedIncrement=0;
+  let mode='timed';
+  let melodySequence = [], melodyIndex=0;
+
+  // NEW: per-note timer to ensure note does not change until user answers or this timeout fires
+  let noteTimer = null;
+  const perNoteTimeout = () => Math.max(3000, intervalMs * 2); // fallback timeout if player doesn't answer
+
+  function randChoice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function allNotes(){ return Object.keys(FREQ); }
+
+  // Pick a random note (optionally restrict to white/black)
+  function randomNote(variant=2){
+    const notes = allNotes();
+    // variant: 1 = white-heavy, 2 = all, 3 = include sharps more
+    if (variant===1) return randChoice(notes.filter(n=>n.indexOf('#')===-1));
+    return randChoice(notes);
+  }
+
+  // UI helpers
+  function setFeedback(txt, good){
+    feedback.textContent = txt || '';
+    feedback.style.color = good ? '#10b981' : '#ff7b7b';
+    setTimeout(()=>{ if (feedback.textContent===txt) feedback.textContent=''; }, 900);
+  }
+  function highlightKey(note, on=true){
+    const el = keyboard.querySelector('[data-note="'+note+'"]');
+    if (!el) return;
+    if (on) el.classList.add('active'); else el.classList.remove('active');
+  }
+
+  // Mode implementations
+  function startTimed(){
+    score=0; round=0;
+    scoreEl.textContent=score; roundEl.textContent=round;
+    timeLeft=60; timerEl.textContent = timeLeft + 's';
+    running=true;
+    // start the countdown
+    if (timerId) clearInterval(timerId);
+    timerId = setInterval(()=>{
+      timeLeft--; timerEl.textContent = timeLeft + 's';
+      if (timeLeft<=0){ stopGame(); }
+    },1000);
+    // play first note
+    playNextTimed();
+  }
+
+  function playNextTimed(){
+    // clear any existing per-note timer
+    if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
+    round++; roundEl.textContent=round;
+    currentNote = randomNote(Number(difficulty.value));
+    playFreq(FREQ[currentNote]);
+    clearHighlights();
+    // start per-note timeout: if user doesn't answer, count as miss and advance to next
+    noteTimer = setTimeout(() => {
+      if (!running) return;
+      setFeedback('Timeout', false);
+      score = Math.max(0, score-1);
+      scoreEl.textContent = score;
+      // advance to next note
+      playNextTimed();
+    }, perNoteTimeout());
+  }
+
+  function startSpeed(){
+    score=0; round=0; scoreEl.textContent=score; roundEl.textContent=round;
+    intervalMs = 1200;
+    running=true;
+    speedVal.textContent='increasing';
+    playNextSpeed();
+  }
+
+  function playNextSpeed(){
+    if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
+    round++; roundEl.textContent=round;
+    currentNote = randomNote(Number(difficulty.value));
+    playFreq(FREQ[currentNote]);
+    clearHighlights();
+    // start per-note timeout: if user doesn't answer, treat as miss and still speed up slightly
+    noteTimer = setTimeout(() => {
+      if (!running) return;
+      setFeedback('Timeout', false);
+      score = Math.max(0, score-1);
+      scoreEl.textContent = score;
+      // speed up a bit even on timeout
+      intervalMs = Math.max(300, intervalMs - 40);
+      playNextSpeed();
+    }, perNoteTimeout());
+  }
+
+  function startMelody(){
+    score=0; round=0; scoreEl.textContent=score; roundEl.textContent=round;
+    running=true;
+    startMelodyRound();
+  }
+  function startMelodyRound(){
+    melodySequence = [];
+    const len = 2 + Math.floor(Math.random()*3); // 2..4
+    for(let i=0;i<len;i++) melodySequence.push(randomNote(Number(difficulty.value)));
+    // show sequence in the UI
+    seqRow.innerHTML = '';
+    melodySequence.forEach(n => {
+      const d = document.createElement('div'); d.className='seq-item'; d.textContent=n.replace('4','');
+      seqRow.appendChild(d);
+    });
+    // play the melody with gaps
+    let t = 0;
+    melodyIndex = 0;
+    melodySequence.forEach((n,i)=>{
+      setTimeout(()=>{ playFreq(FREQ[n], 0.45); highlightKey(n,true); setTimeout(()=>highlightKey(n,false),320); }, t);
+      t += 600;
+    });
+    // after playback, user must repeat
+    setTimeout(()=>{ seqRow.innerHTML = '<div class="small">Repeat the melody</div>'; }, t+200);
+  }
+
+  function startVisual(){
+    score=0; round=0; scoreEl.textContent=score; roundEl.textContent=round;
+    running=true;
+    visualRound();
+  }
+  function visualRound(){
+    // show 3-note pattern visually, then hide and ask user to press sequence
+    const len = 3;
+    const seq = [];
+    for(let i=0;i<len;i++) seq.push(randomNote(1));
+    seqRow.innerHTML = '';
+    seq.forEach(n=>{ const d=document.createElement('div'); d.className='seq-item'; d.textContent=n.replace('4',''); seqRow.appendChild(d); });
+    // highlight keys briefly in order
+    let t=0; seq.forEach((n,i)=>{
+      setTimeout(()=>{ highlightKey(n,true); playFreq(FREQ[n],0.28); setTimeout(()=>highlightKey(n,false),400); }, t);
+      t += 700;
+    });
+    // after showing, clear and accept presses to match sequence
+    setTimeout(()=>{ seqRow.innerHTML = '<div class="small">Now reproduce the sequence</div>'; window.expectedVisual = seq; window.visualIdx = 0; }, t+200);
+  }
+
+  function clearHighlights(){ document.querySelectorAll('.active').forEach(el=>el.classList.remove('active')); }
+
+  function stopGame(){
+    running=false;
+    if (timerId){ clearInterval(timerId); timerId=null; }
+    if (noteTimer){ clearTimeout(noteTimer); noteTimer=null; }
+    timerEl.textContent='--';
+    setFeedback('Finished', true);
+  }
+
+  // helper: play sound then show feedback after short delay
+  function playThenFeedback(note, feedbackText, good, soundDur = 180) {
+    if (note && FREQ[note]) playFreq(FREQ[note], soundDur/1000);
+    setTimeout(() => setFeedback(feedbackText, good), 140);
+  }
+
+  // user input handler
+  function handleGuess(note){
+    if (!running) return;
+    // clear per-note timer when user answers
+    if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
+
+    if (modeEl.value === 'timed'){
+      if (note === currentNote){
+        score++;
+        scoreEl.textContent = score;
+        playThenFeedback(note, 'Correct', true, 180);
+      }
+      else {
+        score = Math.max(0, score-1);
+        scoreEl.textContent = score;
+        playThenFeedback(note, 'Wrong', false, 180);
+      }
+      // only now advance to next note after feedback shown (small delay already scheduled)
+      // schedule next after feedback delay to keep pace consistent
+      setTimeout(() => { if (running) playNextTimed(); }, 220);
+    } else if (modeEl.value === 'speed'){
+      if (note === currentNote){
+        score++; scoreEl.textContent = score;
+        // speed up on success
+        intervalMs = Math.max(300, intervalMs - (20 + Number(difficulty.value)*5));
+        playThenFeedback(note, 'Correct', true, 160);
+        setTimeout(()=>{ if (running) playNextSpeed(); }, 220);
+      } else {
+        score = Math.max(0, score-1); scoreEl.textContent = score;
+        intervalMs = Math.max(300, intervalMs - 10);
+        playThenFeedback(note, 'Wrong', false, 160);
+        setTimeout(()=>{ if (running) playNextSpeed(); }, 220);
+      }
+    } else if (modeEl.value === 'melody'){
+      if (typeof window.userMelody === 'undefined') window.userMelody = [];
+      window.userMelody.push(note);
+      // play sound immediately; feedback after short delay
+      if (FREQ[note]) playFreq(FREQ[note], 0.18);
+      const idx = window.userMelody.length - 1;
+      if (window.userMelody[idx] !== melodySequence[idx]) {
+        // wrong: feed back after sound
+        setTimeout(()=> setFeedback('Wrong', false), 140);
+        window.userMelody = [];
+        score = Math.max(0, score-1); scoreEl.textContent=score;
+        // replay the melody after short delay (allow sound/feedback to finish)
+        setTimeout(()=> startMelodyRound(), 700);
+      } else {
+        setTimeout(()=> setFeedback('Good', true), 140);
+        if (window.userMelody.length === melodySequence.length){
+          setTimeout(()=> setFeedback('Melody Correct', true), 140);
+          score++; scoreEl.textContent=score;
+          window.userMelody = [];
+          setTimeout(()=> startMelodyRound(), 700);
+        }
+      }
+    } else if (modeEl.value === 'visual'){
+      if (!window.expectedVisual) return;
+      const expected = window.expectedVisual[window.visualIdx];
+      // play sound immediately for pressed key
+      if (FREQ[note]) playFreq(FREQ[note], 0.18);
+      if (note === expected){
+        setTimeout(()=> setFeedback('Good', true), 140);
+        window.visualIdx++;
+        if (window.visualIdx >= window.expectedVisual.length){
+          setTimeout(()=> setFeedback('Sequence OK', true), 140);
+          score++; scoreEl.textContent=score;
+          window.expectedVisual = null; window.visualIdx = 0;
+          setTimeout(()=> visualRound(), 900);
+        }
+      } else {
+        setTimeout(()=> setFeedback('Wrong', false), 140);
+        score = Math.max(0, score-1); scoreEl.textContent=score;
+        window.expectedVisual = null; window.visualIdx = 0;
+        setTimeout(()=> visualRound(), 900);
+      }
+    }
+  }
+
+  // --- add: positionBlackKeys() to align black keys between white keys ---
+  function positionBlackKeys() {
+    try {
+      const container = document.getElementById('keyboard');
+      if (!container) return;
+      const whiteKeys = Array.from(container.querySelectorAll('.white'));
+      const blackEls = Array.from(container.querySelectorAll('.black'));
+
+      // map black-note -> pair of adjacent white-note ids
+      const blackPairs = {
+        'C#4': ['C4', 'D4'],
+        'D#4': ['D4', 'E4'],
+        'F#4': ['F4', 'G4'],
+        'G#4': ['G4', 'A4'],
+        'A#4': ['A4', 'B4']
+      };
+
+      const containerRect = container.getBoundingClientRect();
+
+      // Compute a representative white key width/height (use average to be robust)
+      const whiteWidths = whiteKeys.map(w => w.getBoundingClientRect().width).filter(Boolean);
+      const whiteHeights = whiteKeys.map(w => w.getBoundingClientRect().height).filter(Boolean);
+      const avgWhiteWidth = whiteWidths.length ? (whiteWidths.reduce((a,b)=>a+b,0)/whiteWidths.length) : 60;
+      const avgWhiteHeight = whiteHeights.length ? (whiteHeights.reduce((a,b)=>a+b,0)/whiteHeights.length) : 160;
+
+      // Desired black key size relative to white key (tweakable)
+      const BLACK_WIDTH_RATIO = 0.62;   // width = 62% of white key width
+      const BLACK_HEIGHT_RATIO = 0.62;  // height = 62% of white key height
+      const blackW = Math.round(avgWhiteWidth * BLACK_WIDTH_RATIO);
+      const blackH = Math.round(avgWhiteHeight * BLACK_HEIGHT_RATIO);
+
+      blackEls.forEach(el => {
+        const note = el.dataset.note;
+        const pair = blackPairs[note];
+        if (!pair) return;
+        const leftWhite = whiteKeys.find(w => w.dataset.note === pair[0]);
+        const rightWhite = whiteKeys.find(w => w.dataset.note === pair[1]);
+        if (!leftWhite || !rightWhite) return;
+
+        const rL = leftWhite.getBoundingClientRect();
+        const rR = rightWhite.getBoundingClientRect();
+
+        // center point between the centers of the two white keys
+        const center = ((rL.left + rL.right) / 2 + (rR.left + rR.right) / 2) / 2;
+        let leftPos = center - containerRect.left - (blackW / 2);
+
+        // clamp so black keys don't overflow container
+        leftPos = Math.min(Math.max(leftPos, 4), containerRect.width - blackW - 4);
+
+        // apply size & position
+        el.style.position = 'absolute';
+        el.style.left = `${Math.round(leftPos)}px`;
+        el.style.top = `${Math.round(Math.max(6, avgWhiteHeight * 0.06))}px`; // small top offset
+        el.style.width = `${blackW}px`;
+        el.style.height = `${blackH}px`;
+        el.style.zIndex = 50;
+        el.style.display = ''; // ensure visible
+        // center internal label vertically
+        el.style.display = 'flex';
+        el.style.alignItems = 'flex-end';
+        el.style.justifyContent = 'center';
+        el.style.paddingBottom = '8px';
+      });
+    } catch (e) {
+      console.warn('positionBlackKeys error', e);
+    }
+  }
+
+  // run once after DOM ready and whenever window resizes (debounced)
+  window.addEventListener('load', () => {
+    // small timeout ensures fonts/layout settled
+    setTimeout(positionBlackKeys, 40);
+  });
+  window.addEventListener('resize', () => {
+    if (window.__ni_resize_timer) clearTimeout(window.__ni_resize_timer);
+    window.__ni_resize_timer = setTimeout(() => {
+      positionBlackKeys();
+      window.__ni_resize_timer = null;
+    }, 80);
+  });
+
+  // also call immediately in case script runs after load
+  positionBlackKeys();
+
+  // wire up UI
+  startBtn.addEventListener('click', (e)=>{
+    // unlock audio
+    ensureAudio().resume().catch(()=>{});
+    mode = modeEl.value;
+    // set base interval/difficulty
+    const diff = Number(difficulty.value);
+    if (mode==='timed'){ intervalMs = 1200 - diff*200; startTimed(); }
+    else if (mode==='speed'){ intervalMs = 1200 - diff*200; startSpeed(); speedVal.textContent='increasing'; }
+    else if (mode==='melody'){ startMelody(); }
+    else if (mode==='visual'){ startVisual(); }
+    setFeedback('Go!', true);
+  });
+
+  playBtn.addEventListener('click', ()=>{
+    if (!running) { setFeedback('Start first', false); return; }
+    // play the current note (or melody preview)
+    if (modeEl.value==='melody' && melodySequence && melodySequence.length){
+      melodySequence.forEach((n,i)=> setTimeout(()=>{ playFreq(FREQ[n]); highlightKey(n,true); setTimeout(()=>highlightKey(n,false),220); }, i*500));
+    } else if (modeEl.value==='visual' && window.expectedVisual){
+      window.expectedVisual.forEach((n,i)=> setTimeout(()=>{ playFreq(FREQ[n]); highlightKey(n,true); setTimeout(()=>highlightKey(n,false),220); }, i*400));
+    } else {
+      if (currentNote) { playFreq(FREQ[currentNote]); highlightKey(currentNote,true); setTimeout(()=>highlightKey(currentNote,false),320); }
+    }
+  });
+
+  // keyboard click handling
+  keyboard.addEventListener('click', (ev)=>{
+    const note = ev.target.closest('[data-note]') && ev.target.closest('[data-note]').dataset.note;
+    if (!note) return;
+    handleGuess(note);
+  });
+
+  // map physical keyboard keys to notes too
+  window.addEventListener('keydown', (e)=>{
+    const k = e.key.toLowerCase();
+    const map = {'a':'C4','s':'D4','d':'E4','f':'F4','g':'G4','h':'A4','j':'B4'};
+    if (map[k]) { handleGuess(map[k]); }
+  });
+
+  // initial UI state
+  scoreEl.textContent = '0';
+  timerEl.textContent = '--';
+  roundEl.textContent = '0';
+  speedVal.textContent = 'normal';
+})();
+</script>
+</body>
+</html>

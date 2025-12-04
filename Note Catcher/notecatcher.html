@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Note Catcher — Musical Notes</title>
+<style>
+html,body{margin:0;height:100%;background:#071229;overflow:hidden;font-family:sans-serif;}
+canvas{display:block;}
+#startScreen{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(7,18,41,0.95);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:10;}
+#startScreen h1{font-size:3em;margin-bottom:20px;}
+#startScreen button{font-size:1.5em;padding:10px 30px;border:none;border-radius:10px;background:#0ea5a4;color:#071229;cursor:pointer;transition:0.3s;}
+#startScreen button:hover{background:#14b8a6;}
+</style>
+</head>
+<body>
+<div id="startScreen">
+    <h1>Note Catcher</h1>
+    <p>Catch the correct musical notes!</p>
+    <button id="startBtn">Start Game</button>
+</div>
+<canvas id="gameCanvas"></canvas>
+
+<!-- audio elements: use relative paths (files must be in same folder as this HTML) -->
+<audio id="bgm" loop preload="auto" playsinline src="./bgm.mp3"></audio>
+<audio id="goodSound" preload="auto" playsinline src="./Good.wav"></audio>
+<audio id="missSound" preload="auto" playsinline src="./Miss.wav"></audio>
+<audio id="gameOverSound" preload="auto" playsinline src="./GameOver.mp3"></audio>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const bgm = document.getElementById('bgm');
+
+let player = {x:0, y:0, w:150, h:20, speed:0};
+let notes = [];
+let score = 0;
+let lives = 3;
+let running = false;
+let spawnInterval = 1000; 
+let lastSpawn = 0;
+const noteTypes = ['whole','half','quarter','eighth','sixteenth'];
+let targetNote = noteTypes[Math.floor(Math.random()*noteTypes.length)];
+const keys = {left:false, right:false};
+let isDragging = false;
+
+	// improved clone-play helper with clearer logging for missing/unsupported sources
+	function playSoundById(id, volume = 0.5) {
+		const base = document.getElementById(id);
+		if (base) {
+			// if the base element already has an error state, log it
+			if (base.error) {
+				console.error(`Audio element "${id}" has an error:`, base.error);
+			}
+			try {
+				const node = base.cloneNode(true);
+				node.preload = 'auto';
+				node.playsInline = true;
+				node.volume = volume;
+				node.currentTime = 0;
+				document.body.appendChild(node);
+				try { node.load(); } catch (e) { /* ignore */ }
+				node.play().catch((err) => {
+					// More explicit message for NotSupportedError / missing source
+					console.warn(`Playback rejected for "${id}" (src="${node.currentSrc || node.src}"):`, err);
+				}).finally(() => {
+					setTimeout(() => {
+						if (node && node.parentNode) node.parentNode.removeChild(node);
+					}, 2500);
+				});
+				return;
+			} catch (e) {
+				console.warn('playSoundById clone error for', id, e);
+			}
+		}
+		// fallback: attempt to fetch the URL to give clearer diagnostics
+		const fallbackUrl = id.startsWith('./') || id.startsWith('/') ? id : `./${id}`;
+		const a = new Audio(fallbackUrl);
+		a.volume = volume;
+		a.play().catch((err) => {
+			console.warn(`Fallback audio play failed for "${fallbackUrl}":`, err);
+		});
+	}
+
+	// attach error handlers to the base audio elements so loading failures are visible
+	['bgm','goodSound','missSound','gameOverSound'].forEach((id) => {
+		const el = document.getElementById(id);
+		if (el) {
+			el.addEventListener('error', (ev) => {
+				console.error(`Audio load error for "${id}" (src="${el.src}"):`, ev, el.error);
+			});
+		}
+	});
+
+function resizeCanvas(){
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    player.y = canvas.height - 60;
+    spawnInterval = Math.max(800, canvas.width * 0.6);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+window.addEventListener('keydown', e => {if(e.key==='ArrowLeft'||e.key==='a') keys.left=true; if(e.key==='ArrowRight'||e.key==='d') keys.right=true;});
+window.addEventListener('keyup', e => {if(e.key==='ArrowLeft'||e.key==='a') keys.left=false; if(e.key==='ArrowRight'||e.key==='d') keys.right=false;});
+
+canvas.addEventListener('mousedown', e => {
+    if(e.clientX >= player.x && e.clientX <= player.x+player.w && e.clientY >= player.y && e.clientY <= player.y+player.h){
+        isDragging = true;
+    }
+});
+canvas.addEventListener('mouseup', e => { isDragging=false; });
+canvas.addEventListener('mousemove', e => { if(isDragging) player.x = e.clientX - player.w/2; });
+canvas.addEventListener('touchstart', e => {
+    const touch = e.touches[0];
+    if(touch.clientX >= player.x && touch.clientX <= player.x+player.w && touch.clientY >= player.y && touch.clientY <= player.y+player.h){
+        isDragging = true;
+        e.preventDefault();
+    }
+});
+canvas.addEventListener('touchend', e => { isDragging=false; });
+canvas.addEventListener('touchmove', e => {
+    if(isDragging){
+        const touch = e.touches[0];
+        player.x = touch.clientX - player.w/2;
+        e.preventDefault();
+    }
+});
+
+function rand(min,max){return Math.random()*(max-min)+min;}
+function spawnNote(){
+    let type;
+    if(Math.random()<0.5) type=targetNote; else { const others = noteTypes.filter(n=>n!==targetNote); type = others[Math.floor(Math.random()*others.length)];}
+    notes.push({x:rand(30,canvas.width-30),y:-30,r:canvas.height*0.03,type,vy:rand(canvas.height*0.002,canvas.height*0.005)});
+}
+
+function gameOverSequence(){
+    running = false;
+    bgm.pause();
+    bgm.currentTime = 0;
+    playSoundById('gameOverSound', 1.0);
+    setTimeout(() => {
+        alert('Game Over! Score: '+score);
+        location.reload();
+    }, 1500);
+}
+
+function update(){
+    if(!running) return;
+
+    if(keys.left) player.x -= player.speed;
+    if(keys.right) player.x += player.speed;
+    if(player.x<0) player.x=0;
+    if(player.x+player.w>canvas.width) player.x=canvas.width-player.w;
+    
+    if(performance.now()-lastSpawn>spawnInterval){spawnNote(); lastSpawn=performance.now();}
+
+    for(let i=notes.length-1;i>=0;i--){
+        let n=notes[i];
+        n.y+=n.vy;
+
+        if(n.y+n.r>player.y && n.y-n.r<player.y+player.h && Math.abs(n.x-(player.x+player.w/2))<player.w/2+n.r){
+            if(n.type===targetNote){
+                score +=1; 
+                playSoundById('goodSound', 0.7);
+                targetNote = noteTypes[Math.floor(Math.random()*noteTypes.length)];
+            }
+            else {
+                lives--; 
+                playSoundById('missSound', 0.8);
+                if(lives<=0){gameOverSequence(); return;}
+            }
+            notes.splice(i,1); continue;
+        }
+
+        if(n.y>canvas.height){
+            if(n.type===targetNote){
+                lives--; 
+                playSoundById('missSound', 0.8);
+                if(lives<=0){gameOverSequence(); return;}
+            }
+            notes.splice(i,1);
+        }
+    }
+}
+
+function drawNoteShape(n,sizeMultiplier=1){
+    ctx.save(); ctx.translate(n.x,n.y);
+    ctx.beginPath(); ctx.ellipse(0,0,n.r*0.7*sizeMultiplier,n.r*0.55*sizeMultiplier,0,0,Math.PI*2);
+    ctx.strokeStyle='#fff';
+    if(n.type==='quarter' || n.type==='eighth' || n.type==='sixteenth') {
+        ctx.fillStyle='#fff';
+        ctx.fill();
+    } else {
+        ctx.lineWidth=2;
+        ctx.stroke();
+    }
+    if(n.type!=='whole'){
+        ctx.fillStyle = '#fff'; 
+        ctx.fillRect(n.r*0.6*sizeMultiplier,-n.r*1.4*sizeMultiplier,3*sizeMultiplier,n.r*2.2*sizeMultiplier);
+    }
+    let flags=0; if(n.type==='eighth') flags=1; if(n.type==='sixteenth') flags=2;
+    for(let f=0;f<flags;f++){
+        ctx.beginPath();
+        ctx.moveTo(n.r*0.6*sizeMultiplier+3,-n.r*1.4*sizeMultiplier+f*6*sizeMultiplier); 
+        ctx.quadraticCurveTo(n.r*0.6*sizeMultiplier+15,-n.r*0.8*sizeMultiplier+f*6*sizeMultiplier,n.r*0.6*sizeMultiplier+3,-n.r*0.2*sizeMultiplier+f*6*sizeMultiplier); 
+        ctx.strokeStyle='#fff'; 
+        ctx.lineWidth=2; 
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function draw(){
+    ctx.fillStyle='#071229'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#0ea5a4'; 
+    ctx.fillRect(player.x,player.y,player.w,player.h);
+    notes.forEach(n=>drawNoteShape(n));
+    ctx.fillStyle='#fff';
+    ctx.font=`${canvas.height*0.05}px sans-serif`;
+    ctx.textAlign='center';
+    ctx.fillText('CATCH: '+targetNote.toUpperCase(),canvas.width/2,canvas.height*0.08);
+    ctx.font=`${canvas.height*0.03}px sans-serif`;
+    ctx.textAlign='left';
+    ctx.fillText('Score: '+score,20,canvas.height*0.12);
+    ctx.fillText('Lives: '+lives,20,canvas.height*0.16);
+    player.speed = canvas.width*0.008;
+}
+
+function loop(){
+    if(running){
+        update(); 
+        draw(); 
+        requestAnimationFrame(loop);
+    }
+}
+
+document.getElementById('startBtn').addEventListener('click', async () => {
+	document.getElementById('startScreen').style.display = 'none';
+	try {
+		bgm.volume = 0.4;
+		await bgm.play();
+	} catch (e) {
+		console.warn('BGM autoplay blocked or failed:', e);
+		// attempt to play a short effect to unlock / diagnose
+		playSoundById('goodSound', 0.01);
+		// if bgm has an error state, surface it
+		if (bgm && bgm.error) console.error('bgm element error:', bgm.error);
+	}
+	// small unlock for effects
+	try { playSoundById('goodSound', 0.01); } catch (err) { console.warn('effect unlock failed', err); }
+
+	running = true;
+	loop();
+});
+</script>
+</body>
+</html>
